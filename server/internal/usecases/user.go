@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/oegegr/gophkeeper/server/internal/domain"
 	"github.com/oegegr/gophkeeper/server/internal/input/grpc"
 	"github.com/samber/do/v2"
@@ -44,11 +45,6 @@ func NewAuthUseCase(repos AuthRepository, tokenManager TokenProvider) *AuthUseCa
 
 // Register регистрирует нового пользователя
 func (uc *AuthUseCaseImpl) Register(ctx context.Context, login, password string) (*domain.User, string, error) {
-	// Валидация
-	if login == "" || password == "" {
-		return nil, "", domain.ErrInvalidInput
-	}
-
 	// Проверяем, нет ли уже такого пользователя
 	existing, _ := uc.repos.FindByLogin(ctx, login)
 	if existing != nil {
@@ -57,6 +53,7 @@ func (uc *AuthUseCaseImpl) Register(ctx context.Context, login, password string)
 
 	// Создаем пользователя
 	user := &domain.User{
+		ID:        uuid.NewString(),
 		Login:     login,
 		Password:  password, // В реальности здесь был бы хеш
 		CreatedAt: time.Now(),
@@ -79,11 +76,6 @@ func (uc *AuthUseCaseImpl) Register(ctx context.Context, login, password string)
 
 // Login выполняет аутентификацию пользователя
 func (uc *AuthUseCaseImpl) Login(ctx context.Context, login, password string) (*domain.User, string, error) {
-	// Валидация
-	if login == "" || password == "" {
-		return nil, "", domain.ErrInvalidInput
-	}
-
 	// Ищем пользователя
 	user, err := uc.repos.FindByLogin(ctx, login)
 	if err != nil {

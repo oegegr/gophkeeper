@@ -108,12 +108,20 @@ func (s *GophKeeperServer) AddSecret(ctx context.Context, req *pb.AddSecretReque
 	if err != nil {
 		return nil, err
 	}
-	secret, err := s.secretUC.AddSecret(ctx, userID, domain.SecretType(req.GetType()), req.GetData(), req.GetMeta())
+
+	mapper := NewMapper()
+
+	secretType, err := mapper.FromSecretType(req.Type)
+	if err != nil {
+		return nil, err 
+	}
+
+	secret, err := s.secretUC.AddSecret(ctx, userID, secretType, req.GetData(), req.GetMeta())
 	if err != nil {
 		return nil, err
 	}
 
-	protoSecret, err := NewMapper().ToProtoSecret(secret)
+	protoSecret, err := mapper.ToProtoSecret(secret)
 	if err != nil {
 		return nil, err
 	}

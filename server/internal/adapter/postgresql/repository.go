@@ -65,6 +65,7 @@ func (s *PostgresRepository) FindSecretByID(ctx context.Context, secretID string
 	var metaData []byte
 	var createdAt, updatedAt time.Time
 	var secretType string
+	var dataString string
 
 	// Используем QueryRowContext вместо QueryRow
 	row := s.db.QueryRowContext(ctx, sqlStr, args...)
@@ -72,7 +73,7 @@ func (s *PostgresRepository) FindSecretByID(ctx context.Context, secretID string
 		&secret.ID,
 		&secret.UserID,
 		&secretType,
-		&secret.Data,
+		&dataString,
 		&metaData,
 		&secret.Version,
 		&createdAt,
@@ -85,6 +86,7 @@ func (s *PostgresRepository) FindSecretByID(ctx context.Context, secretID string
 		}
 		return domain.Secret{}, fmt.Errorf("failed to query secret: %w", err)
 	}
+
 
 	// Конвертируем тип
 	secret.Type = domain.SecretType(secretType)
@@ -114,7 +116,6 @@ func (s *PostgresRepository) FindSecretsByUserID(ctx context.Context, userID str
 		From(TableSecrets).
 		Where(sq.Eq{ColumnUserID: userID}).
 		OrderBy(ColumnCreatedAt + " DESC")
-
 	sqlStr, args, err := query.ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build SQL: %w", err)
@@ -134,12 +135,13 @@ func (s *PostgresRepository) FindSecretsByUserID(ctx context.Context, userID str
 		var metaData []byte
 		var createdAt, updatedAt time.Time
 		var secretType string
+		var dataString string
 
 		err := rows.Scan(
 			&secret.ID,
 			&secret.UserID,
 			&secretType,
-			&secret.Data,
+			&dataString,
 			&metaData,
 			&secret.Version,
 			&createdAt,
@@ -334,12 +336,14 @@ func (s *PostgresRepository) FindByLogin(ctx context.Context, login string) (*do
 func (s *PostgresRepository) CreateUser(ctx context.Context, user *domain.User) error {
 	query := s.psql.Insert(TableUsers).
 		Columns(
+			ColumnID,
 			ColumnLogin,
 			ColumnPasswordHash,
 			ColumnCreatedAt,
 			ColumnUpdatedAt,
 		).
 		Values(
+			user.ID,
 			user.Login,
 			user.Password, // исправлено: PasswordHash вместо Password
 			time.Now(),

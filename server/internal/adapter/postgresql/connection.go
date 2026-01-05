@@ -11,30 +11,30 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	_ "github.com/jackc/pgx/v5/stdlib"
+
+	"github.com/oegegr/gophkeeper/server/migrations"
 )
 
 // NewPGConn создает новое подключение к PostgreSQL с пулом, проверяет его и применяет миграции
 func NewPGConn(ctx context.Context, connectionString string) (*sql.DB, error) {
 	log.Println("Creating PostgreSQL connection pool...")
 
-	// 1. Создаем подключение с пулом
 	db, err := createConnectionPool(connectionString)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connection pool: %w", err)
 	}
 
-	// 2. Проверяем подключение
 	if err := pingConnection(db); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("failed to verify connection: %w", err)
 	}
 
-	// 3. Применяем миграции
-	// if err := applyMigrations(connectionString); err != nil {
-	// 	db.Close()
-	// 	return nil, fmt.Errorf("failed to apply migrations: %w", err)
-	// }
+	if err := applyMigrations(connectionString); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to apply migrations: %w", err)
+	}
 
 	log.Println("PostgreSQL connection pool created successfully")
 	return db, nil
@@ -71,17 +71,26 @@ func pingConnection(db *sql.DB) error {
 	return nil
 }
 
-// applyMigrations применяет миграции к базе данных
+// applyMigrations применяет миграции к базе данных используя embed
 func applyMigrations(connectionString string) error {
 	log.Println("Applying PostgreSQL migrations...")
 
-	m, err := migrate.New("file://server/migrations", connectionString)
+	// Создаем источник миграций из embed.FS
+	sourceDriver, err := iofs.New(migrations.MigrationsFS, ".")
+	if err != nil {
+		log.Printf("failed to create migration source: %v", err)
+		return fmt.Errorf("failed to create migration source: %w", err)
+	}
+
+	// Создаем мигратор с использованием embed source
+	m, err := migrate.NewWithSourceInstance("iofs", sourceDriver, connectionString)
 	if err != nil {
 		log.Printf("failed to configure db migrations: %v", err)
 		return fmt.Errorf("failed to create migration: %w", err)
 	}
 	defer m.Close()
 
+	// Применяем миграции
 	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		log.Printf("failed to apply db migrations: %v", err)
 		return fmt.Errorf("failed to apply migrations: %w", err)

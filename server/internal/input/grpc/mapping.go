@@ -73,6 +73,25 @@ func (m *Mapper) ToProtoSecrets(secrets []domain.Secret) ([]*pb.Secret, error) {
 }
 
 // FromProtoSecret преобразует protobuf Secret в доменный Secret
+func (m *Mapper) FromSecretType(reqType pb.DataType) (domain.SecretType, error) {
+	// Определяем доменный тип
+	var secretType domain.SecretType
+	switch reqType {
+	case pb.DataType_LOGIN_PASSWORD:
+		secretType = domain.SecretTypeLoginPassword
+	case pb.DataType_TEXT:
+		secretType = domain.SecretTypeText
+	case pb.DataType_BINARY:
+		secretType = domain.SecretTypeBinary
+	case pb.DataType_CARD:
+		secretType = domain.SecretTypeCard
+	default:
+		return "", fmt.Errorf("unknown proto secret type: %v", reqType)
+	}
+	return secretType, nil
+}
+
+// FromProtoSecret преобразует protobuf Secret в доменный Secret
 func (m *Mapper) FromProtoSecret(protoSecret *pb.Secret, userID string) (domain.Secret, error) {
 	if protoSecret == nil {
 		return domain.Secret{}, nil
@@ -128,7 +147,7 @@ func (m *Mapper) FromProtoSecrets(protoSecrets []*pb.Secret, userID string) ([]d
 // ToProtoRegisterResponse создает ответ регистрации
 func (m *Mapper) ToProtoRegisterResponse(user *domain.User, token string) *pb.RegisterResponse {
 	return &pb.RegisterResponse{
-		UserId: user.ID,
+		UserId: user.Login,
 		Token:  token,
 	}
 }
@@ -136,7 +155,7 @@ func (m *Mapper) ToProtoRegisterResponse(user *domain.User, token string) *pb.Re
 // ToProtoLoginResponse создает ответ аутентификации
 func (m *Mapper) ToProtoLoginResponse(user *domain.User, token string) *pb.LoginResponse {
 	return &pb.LoginResponse{
-		UserId: user.ID,
+		UserId: user.Login,
 		Token:  token,
 	}
 }
@@ -162,3 +181,4 @@ func parseTime(timeStr string) (time.Time, error) {
 	}
 	return time.Parse("2006-01-02T15:04:05Z07:00", timeStr)
 }
+

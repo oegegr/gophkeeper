@@ -2,9 +2,9 @@ package usecases
 
 import (
 	"context"
-	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/oegegr/gophkeeper/server/internal/domain"
 	"github.com/samber/do/v2"
 )
@@ -37,20 +37,10 @@ func NewSecretsUseCase(repos SecretsRepository) *SecretsUseCaseImpl {
 
 // GetSecrets возвращает все секреты пользователя
 func (uc *SecretsUseCaseImpl) GetSecrets(ctx context.Context, userID string) ([]domain.Secret, error) {
-	// Валидация
-	if userID == "" {
-		return nil, domain.ErrInvalidInput
-	}
-
 	// Получаем секреты
 	secrets, err := uc.repos.FindSecretsByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
-	}
-
-	// Если нет секретов, возвращаем тестовые данные
-	if len(secrets) == 0 {
-		return uc.generateDummySecrets(userID), nil
 	}
 
 	return secrets, nil
@@ -58,11 +48,6 @@ func (uc *SecretsUseCaseImpl) GetSecrets(ctx context.Context, userID string) ([]
 
 // GetSecret возвращает конкретный секрет
 func (uc *SecretsUseCaseImpl) GetSecret(ctx context.Context, userID, secretID string) (domain.Secret, error) {
-	// Валидация
-	if userID == "" || secretID == "" {
-		return domain.Secret{}, domain.ErrInvalidInput
-	}
-
 	// Получаем секрет
 	secret, err := uc.repos.FindSecretByID(ctx, secretID)
 	if err != nil {
@@ -79,14 +64,9 @@ func (uc *SecretsUseCaseImpl) GetSecret(ctx context.Context, userID, secretID st
 
 // AddSecret добавляет новый секрет
 func (uc *SecretsUseCaseImpl) AddSecret(ctx context.Context, userID string, secretType domain.SecretType, data []byte, meta string) (domain.Secret, error) {
-	// Валидация
-	if userID == "" {
-		return domain.Secret{}, domain.ErrInvalidInput
-	}
-
 	// Создаем секрет
 	secret := domain.Secret{
-		ID:        generateSecretID(secretType),
+		ID:        uuid.NewString(),
 		UserID:    userID,
 		Type:      secretType,
 		Data:      data,
@@ -106,11 +86,6 @@ func (uc *SecretsUseCaseImpl) AddSecret(ctx context.Context, userID string, secr
 
 // UpdateSecret обновляет существующий секрет
 func (uc *SecretsUseCaseImpl) UpdateSecret(ctx context.Context, userID, secretID string, secretType domain.SecretType, data []byte, meta string, version int) (domain.Secret, error) {
-	// Валидация
-	if userID == "" || secretID == "" {
-		return domain.Secret{}, domain.ErrInvalidInput
-	}
-
 	// Получаем текущий секрет
 	secret, err := uc.repos.FindSecretByID(ctx, secretID)
 	if err != nil {
@@ -162,37 +137,4 @@ func (uc *SecretsUseCaseImpl) DeleteSecret(ctx context.Context, userID, secretID
 
 	// Удаляем
 	return uc.repos.DeleteSecret(ctx, secretID)
-}
-
-// generateDummySecrets создает тестовые секреты
-func (uc *SecretsUseCaseImpl) generateDummySecrets(userID string) []domain.Secret {
-	now := time.Now()
-
-	return []domain.Secret{
-		{
-			ID:        "dummy_secret_1",
-			UserID:    userID,
-			Type:      domain.SecretTypeLoginPassword,
-			Data:      []byte(`{"login":"test@example.com","password":"test123"}`),
-			Meta:      "Test website",
-			Version:   1,
-			CreatedAt: now,
-			UpdatedAt: now,
-		},
-		{
-			ID:        "dummy_secret_2",
-			UserID:    userID,
-			Type:      domain.SecretTypeText,
-			Data:      []byte(`{"text":"This is a test secret"}`),
-			Meta:      "Test note",
-			Version:   1,
-			CreatedAt: now,
-			UpdatedAt: now,
-		},
-	}
-}
-
-// generateSecretID генерирует ID секрета
-func generateSecretID(secretType domain.SecretType) string {
-	return fmt.Sprintf("%s_%d", secretType, time.Now().UnixNano())
 }
