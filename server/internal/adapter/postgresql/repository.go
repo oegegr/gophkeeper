@@ -11,13 +11,13 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/oegegr/gophkeeper/server/internal/domain"
 
-	// "github.com/oegegr/gophkeeper/server/internal/usecases"
+	"github.com/oegegr/gophkeeper/server/internal/usecases"
 	"github.com/samber/do/v2"
 )
 
-// var _ usecases.AuthRepository = (*PostgresRepository)(nil)
-// var _ usecases.SecretsRepository = (*PostgresRepository)(nil)
-// var _ usecases.SyncRepository = (*PostgresRepository)(nil)
+var _ usecases.AuthRepository = (*PostgresRepository)(nil)
+var _ usecases.SecretsRepository = (*PostgresRepository)(nil)
+var _ usecases.SyncRepository = (*PostgresRepository)(nil)
 
 // PostgresRepository реализация хранилища для PostgreSQL
 type PostgresRepository struct {
@@ -53,7 +53,10 @@ func (s *PostgresRepository) FindSecretByID(ctx context.Context, secretID string
 		ColumnUpdatedAt,
 	).
 		From(TableSecrets).
-		Where(sq.Eq{ColumnID: secretID}).
+		Where(sq.Eq{
+			ColumnID:      secretID,
+			ColumnDeleted: false,
+		}).
 		Limit(1)
 
 	sqlStr, args, err := query.ToSql()
@@ -87,7 +90,6 @@ func (s *PostgresRepository) FindSecretByID(ctx context.Context, secretID string
 		return domain.Secret{}, fmt.Errorf("failed to query secret: %w", err)
 	}
 
-
 	// Конвертируем тип
 	secret.Type = domain.SecretType(secretType)
 	secret.CreatedAt = createdAt
@@ -114,7 +116,10 @@ func (s *PostgresRepository) FindSecretsByUserID(ctx context.Context, userID str
 		ColumnUpdatedAt,
 	).
 		From(TableSecrets).
-		Where(sq.Eq{ColumnUserID: userID}).
+		Where(sq.Eq{
+			ColumnUserID:  userID,
+			ColumnDeleted: false,
+		}).
 		OrderBy(ColumnCreatedAt + " DESC")
 	sqlStr, args, err := query.ToSql()
 	if err != nil {
@@ -171,18 +176,21 @@ func (s *PostgresRepository) FindSecretsByUserID(ctx context.Context, userID str
 
 // DeleteSecret удаляет секрет
 func (s *PostgresRepository) DeleteSecret(ctx context.Context, secretID string) error {
-	query := s.psql.Delete(TableSecrets).
-		Where(sq.Eq{ColumnID: secretID})
+	query := s.psql.Update(TableSecrets).
+		Set(ColumnDeleted, true).
+		Where(sq.Eq{
+			ColumnID:      secretID,
+			ColumnDeleted: false, // Не обновляем уже удаленные
+		})
 
 	sqlStr, args, err := query.ToSql()
 	if err != nil {
 		return fmt.Errorf("failed to build SQL: %w", err)
 	}
 
-	// Используем ExecContext вместо Exec
 	result, err := s.db.ExecContext(ctx, sqlStr, args...)
 	if err != nil {
-		return fmt.Errorf("failed to delete secret: %w", err)
+		return fmt.Errorf("failed to soft delete secret: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()

@@ -22,6 +22,7 @@ type Secret struct {
 	Version   int
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	Deleted   bool
 }
 
 // SecretData представляет данные для разных типов секретов

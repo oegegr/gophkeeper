@@ -20,4 +20,5 @@ const (
 	ColumnData    = "data"
 	ColumnMeta    = "meta"
 	ColumnVersion = "version"
+	ColumnDeleted = "deleted"
 )

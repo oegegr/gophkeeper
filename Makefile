@@ -7,20 +7,22 @@ proto:
 
 generate: proto
 
-build-gophkeeper-server:
-	rm -rf bin 
-	mkdir -p bin
-	chmod +x -R bin
-	go build -ldflags "-X main.buildVersion=v1.0.0 -X main.buildDate=$$(date +'%Y-%m-%d_%H:%M:%S') -X main.buildCommit=$$(git rev-parse HEAD)" -o bin ./...
+.PHONY: build-client
+build-client:
+	go build -ldflags "-X main.buildVersion=v1.0.0 -X main.buildDate=$(date +'%Y-%m-%d_%H:%M:%S') -X main.buildCommit=$(git rev-parse HEAD)" -o bin/client ./client/cmd/client
 
-run: build
-	./bin/
+.PHONY: build-server
+build-server:
+	go build -ldflags "-X main.buildVersion=v1.0.0 -X main.buildDate=$(date +'%Y-%m-%d_%H:%M:%S') -X main.buildCommit=$(git rev-parse HEAD)" -o bin/server ./server/cmd/server
+
+.PHONY: build
+build: build-client build-server
 
 test:
 	go test ./...
 
 .PHONY: run-with-db
-run-with-db: build-gophkeeper-server run-postgresql 
+run-with-db: build-server run-postgresql 
 		GOPHKEEPER_DSA=postgres://admin:admin@127.0.0.1:5432/gophkeeper?sslmode=disable \
 		bin/server
 
