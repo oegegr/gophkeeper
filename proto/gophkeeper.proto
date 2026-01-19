@@ -1,0 +1,143 @@
+syntax = "proto3";
+
+package gophkeeper;
+
+option go_package = "github.com/username/gophkeeper/proto";
+
+// Сервис GophKeeper
+service GophKeeper {
+  // Регистрация пользователя
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  
+  // Аутентификация
+  rpc Login(LoginRequest) returns (LoginResponse)
+  
+  // Синхронизация данных
+  rpc Sync(SyncRequest) returns (SyncResponse);
+ 
+  // Получение всех секретов
+  rpc GetSecrets(GetSecretsRequest) returns (GetSecretsResponse);
+  
+  // Добавление нового секрета
+  rpc AddSecret(AddSecretRequest) returns (AddSecretResponse);
+  
+  // Обновление секрета
+  rpc UpdateSecret(UpdateSecretRequest) returns (UpdateSecretResponse);
+  
+  // Удаление секрета
+  rpc DeleteSecret(DeleteSecretRequest) returns (DeleteSecretResponse);
+}
+
+// Запрос на регистрацию
+message RegisterRequest {
+  string login = 1;
+  string password = 2;
+}
+
+// Ответ на регистрацию
+message RegisterResponse {
+  string user_id = 1;
+  string token = 2;
+}
+
+// Запрос на аутентификацию
+message LoginRequest {
+  string login = 1;
+  string password = 2;
+}
+
+// Ответ на аутентификацию
+message LoginResponse {
+  string user_id = 1;
+  string token = 2;
+}
+
+// Типы хранимых данных
+enum DataType {
+  LOGIN_PASSWORD = 0;
+  TEXT = 1;
+  BINARY = 2;
+  CARD = 3;
+}
+
+// Пользователь
+message User {
+  string id = 1;
+  string login = 2;
+  string created_at = 3;
+}
+
+// Секретная запись
+message Secret {
+  string id = 1;
+  DataType type = 2;
+  bytes data = 3;      // зашифрованные данные
+  string meta = 4;     // метаинформация
+  int32 version = 5;
+  string updated_at = 6;
+}
+
+// Запрос на синхронизацию
+message SyncRequest {
+  repeated Secret secrets = 1;
+}
+
+// Ответ на синхронизацию
+message SyncResponse {
+  repeated Secret secrets = 1;
+}
+
+// Запрос на получение секретов
+message GetSecretsRequest {
+  // пустой запрос, токен в метаданных
+}
+
+// Ответ с секретами
+message GetSecretsResponse {
+  repeated Secret secrets = 1;
+}
+
+// Запрос на добавление секрета
+message AddSecretRequest {
+  DataType type = 1;
+  bytes data = 2;
+  string meta = 3;
+}
+
+// Ответ на добавление
+message AddSecretResponse {
+  Secret secret = 1;
+}
+
+// Запрос на обновление секрета
+message UpdateSecretRequest {
+  string id = 1;
+  DataType type = 2;
+  bytes data = 3;
+  string meta = 4;
+  int32 version = 5;
+}
+
+// Ответ на обновление
+message UpdateSecretResponse {
+  Secret secret = 1;
+}
+
+// Запрос на удаление секрета
+message DeleteSecretRequest {
+  string id = 1;
+}
+
+// Ответ на удаление
+message DeleteSecretResponse {
+  bool success = 1;
+}
+
+// Общие сообщения
+message Empty {}
+
+// Ошибка
+message Error {
+  string message = 1;
+  int32 code = 2;
+}
