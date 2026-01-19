@@ -1,11 +1,13 @@
 package storage
 
 import (
-    "crypto/aes"
-    "crypto/cipher"
-    "crypto/rand"
-    "crypto/sha256"
-    "io"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"crypto/sha256"
+	"io"
+
+	"github.com/pkg/errors"
 )
 
 // EncryptedDataProvider - добавляет шифрование к другому провайдеру
@@ -36,9 +38,7 @@ func (p *EncryptedDataProvider) Load() ([]byte, error) {
     // Пробуем дешифровать
     decrypted, err := decrypt(data, p.password)
     if err != nil {
-        // Если не получается - возможно данные не зашифрованы
-        // Возвращаем как есть
-        return data, nil
+        return nil, errors.Wrap(err, "failed to decrypt data")
     }
     
     return decrypted, nil

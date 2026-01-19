@@ -37,7 +37,7 @@ func (s *TestSuite) SetupSuite() {
 func (s *TestSuite) TearDownSuite() {
 	stopTimeout := 5 * time.Second
 	if s.app != nil {
-		s.app.Stop()
+		s.app.Stop(s.ctx)
 	}
 
 	if s.pgContainer != nil {

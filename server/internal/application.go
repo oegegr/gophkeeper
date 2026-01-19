@@ -25,7 +25,7 @@ type Application struct {
 	lis       net.Listener
 	isRunning bool
 	stopChan  chan struct{}
-	stopFNs   []func(context.Context) error
+	stopDI    StopDI 
 }
 
 // NewApplication создает новое приложение
@@ -49,7 +49,7 @@ func (app *Application) Start(appctx context.Context) error {
 	app.lis = lis
 
 	// Регистрируем сервис
-	app.server, err = app.buildServer(appctx)
+	app.server, app.stopDI, err = app.buildServer(appctx)
 	if err != nil {
 		return fmt.Errorf("failed to register services: %v", err)
 	}
@@ -76,7 +76,7 @@ func (app *Application) Start(appctx context.Context) error {
 }
 
 // Stop останавливает сервер
-func (app *Application) Stop() error {
+func (app *Application) Stop(ctx context.Context) error {
 	if app.server == nil || !app.isRunning {
 		return nil
 	}
@@ -87,6 +87,7 @@ func (app *Application) Stop() error {
 	done := make(chan struct{})
 	go func() {
 		app.server.GracefulStop()
+		app.stopDI(ctx)
 		close(done)
 	}()
 
@@ -106,13 +107,13 @@ func (app *Application) Wait() <-chan struct{} {
 }
 
 // registerServices регистрирует все gRPC сервисы
-func (app *Application) buildServer(appctx context.Context) (*grpc.Server, error) {
+func (app *Application) buildServer(appctx context.Context) (*grpc.Server, StopDI, error) {
 
 	pgconn, err := postgresql.NewPGConn(appctx, app.config.Dsa)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	registerServices(app.config, pgconn)
+	di, stopDI := InitDependencies(app.config, pgconn)
 	// Создаем зависимости
 	handler := do.MustInvokeAs[pb.GophKeeperServer](di)
 	authInterceptor := grpcapp.ResolveAuthInterceptor(di)
@@ -135,5 +136,5 @@ func (app *Application) buildServer(appctx context.Context) (*grpc.Server, error
 	// Регистрируем сервисы
 	pb.RegisterGophKeeperServer(server, handler)
 
-	return server, nil
+	return server, stopDI, nil
 }

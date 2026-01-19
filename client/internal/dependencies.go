@@ -11,14 +11,9 @@ import (
 	"github.com/samber/do/v2"
 )
 
-var di do.Injector
-
-func init() {
-	di = do.New()
-}
-
 // InitDependencies инициализирует все зависимости
-func InitDependencies(cfg *config.Config) error {
+func InitDependencies(cfg *config.Config) (do.Injector, error) {
+	di := do.New()
 	// Конфигурация
 	do.Provide(di, func(i do.Injector) (*config.Config, error) {
 		return cfg, nil
@@ -48,15 +43,10 @@ func InitDependencies(cfg *config.Config) error {
 	do.ProvideValue(di, usecases.ResolveSyncUseCase(di))
 	do.ProvideValue(di, console.ResolveConsoleHandler(di))
 
-	return nil
-}
-
-// GetInjector возвращает инжектор зависимостей
-func GetInjector() do.Injector {
-	return di
+	return di, nil
 }
 
 // ShutdownDependencies завершает работу зависимостей
-func ShutdownDependencies(ctx context.Context) error {
+func ShutdownDependencies(ctx context.Context, di do.Injector) error {
 	return di.Shutdown()
 }

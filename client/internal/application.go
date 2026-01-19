@@ -19,12 +19,14 @@ type App struct {
 	ctx     context.Context
 	console *cli.App
 	cancel  context.CancelFunc
+	di      do.Injector
 }
 
 // New создает новое приложение
 func New(cfg *config.Config) (*App, error) {
 	// Инициализируем DI
-	if err := InitDependencies(cfg); err != nil {
+	di, err := InitDependencies(cfg)
+	if err != nil {
 		return nil, fmt.Errorf("failed to init dependencies: %w", err)
 	}
 
@@ -35,7 +37,7 @@ func New(cfg *config.Config) (*App, error) {
 	cliApp, err := console.New(consoleHandler)
 	if err != nil {
 		cancel()
-		ShutdownDependencies(ctx)
+		ShutdownDependencies(ctx, di)
 		return nil, fmt.Errorf("failed to create CLI app: %w", err)
 	}
 
@@ -44,6 +46,7 @@ func New(cfg *config.Config) (*App, error) {
 		ctx:     ctx,
 		console: cliApp,
 		cancel:  cancel,
+		di:      di,
 	}
 
 	// Настраиваем graceful shutdown
@@ -63,12 +66,12 @@ func (a *App) Stop(ctx context.Context) error {
 	if a.cancel != nil {
 		a.cancel()
 	}
-	
+
 	// Завершаем зависимости
-	if err := ShutdownDependencies(ctx); err != nil {
+	if err := ShutdownDependencies(ctx, a.di); err != nil {
 		return fmt.Errorf("failed to shutdown dependencies: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -80,16 +83,16 @@ func setupGracefulShutdown(app *App) {
 	go func() {
 		<-sigChan
 		fmt.Println("\nShutting down gracefully...")
-		
+
 		// Создаем контекст с таймаутом для graceful shutdown
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		
+
 		// Останавливаем приложение
 		if err := app.Stop(shutdownCtx); err != nil {
 			fmt.Printf("Error during shutdown: %v\n", err)
 		}
-		
+
 		fmt.Println("Shutdown completed")
 		os.Exit(0)
 	}()
