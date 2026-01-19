@@ -52,7 +52,7 @@ func main() {
 	}
 
 	// Останавливаем сервер
-	if err := app.Stop(); err != nil {
+	if err := app.Stop(ctx); err != nil {
 		log.Printf("Error during shutdown: %v", err)
 	}
 
